@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 export default function StudentDashboard() {
-  const [courses, setCourses] = useState([]);
-  const [enrolledCourses, setEnrolledCourses] = useState(new Set());
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [enrolledCourses, setEnrolledCourses] = useState(new Set<string>());
 
   interface Course {
-  id: string;
-  title: string;
-  description: string;
+    id: string;
+    title: string;
+    description: string;
+    enrollments: Array<{ id: string; userId: string; courseId: string }>;
   }
 
   const router = useRouter();
@@ -26,7 +27,20 @@ export default function StudentDashboard() {
 
     fetch("http://localhost:4000/courses")
       .then((res) => res.json())
-      .then((data) => setCourses(data))
+      .then((data: Course[]) => {
+        setCourses(data);
+        const studentId = localStorage.getItem("studentId");
+        const enrolledIds = new Set<string>();
+        data.forEach((course) => {
+          if (
+            course.enrollments &&
+            course.enrollments.some((enrollment) => enrollment.userId === studentId)
+          ) {
+            enrolledIds.add(course.id);
+          }
+        });
+        setEnrolledCourses(enrolledIds);
+      })
       .catch((error) => console.error("Ошибка загрузки курсов", error));
   }, []);
 
@@ -43,7 +57,7 @@ export default function StudentDashboard() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ courseId, userId: studentId || "" }), 
+        body: JSON.stringify({ courseId, userId: studentId || "" }),
       });
 
       if (response.ok) {
@@ -63,13 +77,12 @@ export default function StudentDashboard() {
           <button
             onClick={() => {
               localStorage.clear();
-              window.location.href = "/auth"; // Перенаправление на страницу входа
+              window.location.href = "/auth";
             }}
             className="w-full bg-red-600 text-white p-2 rounded hover:bg-red-700 transition mt-4"
           >
             Выйти
           </button>
-
         </div>
       </header>
 
